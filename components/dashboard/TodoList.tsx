@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { FiEdit, FiTrash2 } from "react-icons/fi";
 import Cookies from "js-cookie";
+import toast from "react-hot-toast";
 
 interface Todo {
   id: string;
@@ -21,6 +22,17 @@ interface IProps {
 const TodoList = ({ filter }: IProps) => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [currentTodo, setCurrentTodo] = useState<Todo | null>(null);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    status: "pending",
+  });
+  const [errors, setErrors] = useState<{
+    title?: string;
+    description?: string;
+  }>({});
 
   const fetchTodos = async () => {
     setLoading(true);
@@ -28,13 +40,10 @@ const TodoList = ({ filter }: IProps) => {
 
     try {
       const query = filter ? `?status=${encodeURIComponent(filter)}` : "";
-
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/todo${query}`,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
       const data = await res.json();
@@ -57,15 +66,68 @@ const TodoList = ({ filter }: IProps) => {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
-
     const data = await res.json();
-    alert(data.message);
+
+    toast.success(data.message);
+
     fetchTodos();
   };
 
-  const handleUpdate = (todo: Todo) => {
-    // Example: open modal or navigate to edit page
-    alert(`Update todo: ${todo.title}`);
+  const openUpdateModal = (todo: Todo) => {
+    setCurrentTodo(todo);
+    setFormData({
+      title: todo.title,
+      description: todo.description,
+      status: todo.status,
+    });
+    setErrors({});
+    setIsUpdateModalOpen(true);
+  };
+
+  const validate = () => {
+    const newErrors: { title?: string; description?: string } = {};
+
+    if (!formData.title.trim()) newErrors.title = "Title is required";
+
+    setErrors(newErrors);
+
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleUpdateSubmit = async () => {
+    if (!validate() || !currentTodo) return;
+
+    const token = Cookies.get("token");
+
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_BACKEND_URL}/todo/${currentTodo.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      toast.error("Something went wrong");
+
+      return;
+    }
+
+    toast.success(data.message);
+
+    setIsUpdateModalOpen(false);
+
+    setCurrentTodo(null);
+
+    setFormData({ title: "", description: "", status: "pending" });
+
+    fetchTodos();
   };
 
   useEffect(() => {
@@ -102,7 +164,7 @@ const TodoList = ({ filter }: IProps) => {
           </div>
           <div className="flex items-center gap-2 ml-4">
             <button
-              onClick={() => handleUpdate(todo)}
+              onClick={() => openUpdateModal(todo)}
               className="text-blue-500 hover:text-blue-700 transition"
             >
               <FiEdit size={20} />
@@ -116,6 +178,71 @@ const TodoList = ({ filter }: IProps) => {
           </div>
         </div>
       ))}
+
+      {isUpdateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+          <div className="relative bg-white p-6 rounded shadow-lg w-full max-w-md z-10">
+            <h2 className="text-lg font-semibold mb-4">Update Todo</h2>
+            <input
+              type="text"
+              placeholder="Title"
+              value={formData.title}
+              onChange={(e) =>
+                setFormData({ ...formData, title: e.target.value })
+              }
+              className={`w-full border rounded px-3 py-2 mb-1 focus:outline-none focus:ring-2 ${
+                errors.title
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:ring-blue-500"
+              }`}
+            />
+            {errors.title && (
+              <p className="text-red-500 text-sm mb-2">{errors.title}</p>
+            )}
+            <textarea
+              placeholder="Description"
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              className={`w-full border rounded px-3 py-2 mb-1 focus:outline-none focus:ring-2 ${
+                errors.description
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:ring-blue-500"
+              }`}
+            />
+            {errors.description && (
+              <p className="text-red-500 text-sm mb-2">{errors.description}</p>
+            )}
+            <select
+              value={formData.status}
+              onChange={(e) =>
+                setFormData({ ...formData, status: e.target.value })
+              }
+              className="w-full border border-gray-300 rounded px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="pending">Pending</option>
+              <option value="in_progress">In Progress</option>
+              <option value="done">Done</option>
+            </select>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setIsUpdateModalOpen(false)}
+                className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateSubmit}
+                className="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600 transition"
+              >
+                Update
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
