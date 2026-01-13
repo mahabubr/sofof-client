@@ -14,7 +14,11 @@ interface Todo {
   updated_at: string;
 }
 
-const TodoList = () => {
+interface IProps {
+  filter: string;
+}
+
+const TodoList = ({ filter }: IProps) => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -23,11 +27,16 @@ const TodoList = () => {
     const token = Cookies.get("token");
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/todo`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const query = filter ? `?status=${encodeURIComponent(filter)}` : "";
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/todo${query}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
       const data = await res.json();
       if (res.ok) setTodos(data.data || []);
     } catch (error) {
@@ -61,7 +70,8 @@ const TodoList = () => {
 
   useEffect(() => {
     fetchTodos();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter]);
 
   if (loading) return <div className="p-4 text-gray-500">Loading todos...</div>;
 

@@ -10,7 +10,7 @@ const Dashboard = () => {
   return (
     <div>
       <Filter filter={filter} setFilter={setFilter} />
-      <TodoList />
+      <TodoList filter={filter} />
     </div>
   );
 };
