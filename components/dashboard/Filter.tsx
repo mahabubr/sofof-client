@@ -21,8 +21,6 @@ const Filter = ({ setFilter, filter }: IProps) => {
     description?: string;
   }>({});
 
-  const router = useRouter();
-
   const handleClick = (option: string) => {
     setFilter(option === filter ? "" : option);
   };
@@ -39,7 +37,7 @@ const Filter = ({ setFilter, filter }: IProps) => {
   const handleSubmit = async () => {
     if (!validate()) return;
 
-      const token = Cookies.get("token");
+    const token = Cookies.get("token");
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/todo`, {
       method: "POST",
@@ -64,7 +62,7 @@ const Filter = ({ setFilter, filter }: IProps) => {
 
     setFormData({ title: "", description: "", status: "pending" });
 
-    router.refresh();
+    window.location.reload();
   };
 
   return (
