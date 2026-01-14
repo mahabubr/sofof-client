@@ -1,0 +1,11 @@
+services:
+  sofof-frontend:
+    container_name: sofof-frontend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    restart: unless-stopped
